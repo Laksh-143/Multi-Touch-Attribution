@@ -444,10 +444,10 @@ def build_dashboard():
 
     <!-- Navigation Tabs -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-models')">📊 1. Attribution Models</button>
-        <button class="tab-btn" onclick="switchTab('tab-cpa')">💰 2. CPA & Acquisition Costs</button>
-        <button class="tab-btn" onclick="switchTab('tab-budget')">🎯 3. Shapley Budget Optimizer</button>
-        <button class="tab-btn" onclick="switchTab('tab-whatif')">⚡ 4. Interactive What-If Simulator</button>
+        <button class="tab-btn active" onclick="switchTab('tab-models')"> 1. Attribution Models</button>
+        <button class="tab-btn" onclick="switchTab('tab-cpa')"> 2. CPA & Acquisition Costs</button>
+        <button class="tab-btn" onclick="switchTab('tab-budget')"> 3. Shapley Budget Optimizer</button>
+        <button class="tab-btn" onclick="switchTab('tab-whatif')"> 4. Interactive What-If Simulator</button>
     </div>
 
     <!-- TAB 1: ATTRIBUTION MODELS -->
