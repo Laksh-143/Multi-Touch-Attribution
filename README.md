@@ -5,7 +5,7 @@
 [![Tableau Dashboard](https://img.shields.io/badge/📊_Tableau_Public-Executive_Portfolio-e17055?style=for-the-badge)](tableau_guide.md)
 [![Python & SQL Stack](https://img.shields.io/badge/Stack-SQLite_%7C_Python_%7C_Chart.js-38bdf8?style=for-the-badge)](#system-architecture)
 
-> **Live Interactive Web Dashboard:** *[Click here to view the live standalone interactive web dashboard (`dashboard.html`) hosted via GitHub Pages!](https://laksh-143.github.io/Multi-Touch-Attribution/dashboard.html)*
+> **Live Interactive Web Dashboard:** *[Click here to view the live standalone interactive web dashboard](https://laksh-143.github.io/Multi-Touch-Attribution/dashboard.html)*
 
 ---
 
