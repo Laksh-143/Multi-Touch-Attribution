@@ -1,0 +1,4 @@
+Channel,Scenario,Current_Spend,Proposed_Spend,Spend_Delta,Current_Shapley_Conv,Projected_Conv,Conv_Delta,Revenue_Impact
+Paid Search,70% of current,26160.0,18312.0,-7848.0,169.5,118.65,-50.85,-6900.27
+Display,150% of current,1561.2,2341.8,780.6,56.5,84.75,28.25,3833.48
+Social,50% of current,113916.0,56958.0,-56958.0,31.17,15.58,-15.58,-2114.86

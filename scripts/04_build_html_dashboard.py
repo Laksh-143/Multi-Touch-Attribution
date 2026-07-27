@@ -1,0 +1,844 @@
+"""
+04_build_html_dashboard.py
+Standalone script that generates an independent, interactive, state-of-the-art HTML/CSS/JS dashboard
+(`dashboard.html`) from the exported CSV data in `data/exports/`.
+
+Features:
+- Completely independent: Does not modify any existing SQL, Notebook, or Python script.
+- Zero local server required: Embeds CSV data directly as JSON into the HTML file so it can be double-clicked
+  and opened instantly in Chrome, Edge, or Safari without CORS file errors.
+- Stunning Premium Aesthetics: Dark mode glassmorphism design, vibrant HSL gradients, micro-animations,
+  and Chart.js interactive charts.
+- Real-time Interactive What-If Simulator: Sliders allowing users to dynamically simulate budget changes
+  and calculate projected conversion and revenue impacts in real time using real AOV ($135.70).
+"""
+
+import os
+import json
+import pandas as pd
+
+def build_dashboard():
+    print("Reading exported CSV data from data/exports/...")
+    
+    try:
+        df_models = pd.read_csv('data/exports/model_comparison.csv')
+        df_fin = pd.read_csv('data/exports/financial_reconciliation.csv')
+        df_opt = pd.read_csv('data/exports/budget_optimizer.csv')
+        df_sim = pd.read_csv('data/exports/what_if_scenarios.csv')
+        df_conv = pd.read_csv('data/exports/fact_conversions.csv')
+        
+        real_aov = df_conv['revenue'].sum() / df_conv['transactions'].sum()
+        total_rev = df_conv['revenue'].sum()
+        total_txns = df_conv['transactions'].sum()
+    except Exception as e:
+        print(f"Error reading exports: {e}. Please ensure scripts/01_build_warehouse.py and 02_run_attribution_models.py have been run.")
+        return
+
+    # Convert dataframes to dictionaries for JSON embedding
+    models_data = df_models.to_dict(orient='records')
+    fin_data = df_fin.fillna(0).to_dict(orient='records')
+    opt_data = df_opt.to_dict(orient='records')
+    sim_data = df_sim.to_dict(orient='records')
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Touch Attribution & Budget Optimizer Dashboard</title>
+    <!-- Google Fonts & Chart.js -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {{
+            --bg-main: #0a0f1d;
+            --bg-card: rgba(18, 26, 47, 0.7);
+            --bg-card-hover: rgba(25, 36, 64, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --accent-primary: #6366f1;
+            --accent-secondary: #38bdf8;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #38bdf8 100%);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }}
+
+        * {{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }}
+
+        body {{
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(at 10% 20%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 90% 80%, rgba(56, 189, 248, 0.12) 0px, transparent 50%);
+            background-attachment: fixed;
+            padding: 2rem;
+            line-height: 1.5;
+        }}
+
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+        }}
+
+        /* Header */
+        header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }}
+
+        .title-area h1 {{
+            font-size: 2.2rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.25rem;
+        }}
+
+        .title-area p {{
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }}
+
+        .badge-disclosure {{
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #fbbf24;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }}
+
+        /* KPI Grid */
+        .kpi-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }}
+
+        .kpi-card {{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }}
+
+        .kpi-card:hover {{
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+            border-color: rgba(99, 102, 241, 0.4);
+        }}
+
+        .kpi-label {{
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }}
+
+        .kpi-value {{
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+            font-family: 'JetBrains Mono', monospace;
+        }}
+
+        .kpi-sub {{
+            font-size: 0.8rem;
+            color: var(--success);
+            margin-top: 0.4rem;
+            font-weight: 500;
+        }}
+
+        /* Navigation Tabs */
+        .tabs {{
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 0.5rem;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            width: fit-content;
+        }}
+
+        .tab-btn {{
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }}
+
+        .tab-btn:hover {{
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }}
+
+        .tab-btn.active {{
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }}
+
+        /* Tab Content / Sections */
+        .tab-content {{
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }}
+
+        .tab-content.active {{
+            display: block;
+        }}
+
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(8px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+
+        .grid-2col {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }}
+
+        @media (max-width: 1024px) {{
+            .grid-2col {{ grid-template-columns: 1fr; }}
+        }}
+
+        .card {{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.75rem;
+            backdrop-filter: blur(12px);
+        }}
+
+        .card-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }}
+
+        .card-title {{
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }}
+
+        .card-desc {{
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }}
+
+        /* Tables */
+        .table-container {{
+            overflow-x: auto;
+        }}
+
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }}
+
+        th {{
+            padding: 1rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }}
+
+        td {{
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+        }}
+
+        tr:hover td {{
+            background: rgba(255, 255, 255, 0.02);
+        }}
+
+        .mono {{
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+        }}
+
+        .badge {{
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }}
+
+        .badge-up {{
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }}
+
+        .badge-down {{
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }}
+
+        /* Interactive Sliders (What-If) */
+        .slider-group {{
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }}
+
+        .slider-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }}
+
+        .slider-label {{
+            font-weight: 600;
+            font-size: 1rem;
+        }}
+
+        .slider-val {{
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            background: rgba(56, 189, 248, 0.1);
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }}
+
+        input[type=range] {{
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }}
+
+        input[type=range]::-webkit-slider-thumb {{
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-secondary);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+            transition: transform 0.1s ease;
+        }}
+
+        input[type=range]::-webkit-slider-thumb:hover {{
+            transform: scale(1.2);
+        }}
+
+        .sim-results {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }}
+
+        .sim-card {{
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }}
+
+        /* Canvas Charts */
+        canvas {{
+            width: 100% !important;
+            max-height: 400px;
+        }}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="title-area">
+            <h1>Multi-Touch Attribution Analytics Dashboard</h1>
+            <p>Algorithmic Attribution & Budget Optimization Pipeline · GA4 E-Commerce Sample Window</p>
+        </div>
+        <div class="badge-disclosure">
+            <span>⚠️ Note: Spend figures are illustrative methodology estimates; AOV (${real_aov:.2f}) is derived from real data.</span>
+        </div>
+    </header>
+
+    <!-- Executive KPI Grid -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Analyzed Sessions</div>
+            <div class="kpi-value">319,982</div>
+            <div class="kpi-sub">Nov 2016 – Feb 2017</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Converting Visitors</div>
+            <div class="kpi-value">3,341</div>
+            <div class="kpi-sub">3,851 Total Transactions</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Real AOV (Actual Revenue)</div>
+            <div class="kpi-value">${real_aov:.2f}</div>
+            <div class="kpi-sub">Total Rev: ${total_rev:,.2f}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Illustrative Paid Spend</div>
+            <div class="kpi-value">${df_fin['Illustrative_Spend'].sum():,.2f}</div>
+            <div class="kpi-sub">4 Paid Channels Evaluated</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Top Shapley Shift (Direct)</div>
+            <div class="kpi-value">+67.17 <span style="font-size:1rem;color:#94a3b8;">Conv</span></div>
+            <div class="kpi-sub">+11.9% vs. Last-Click Credit</div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-models')">📊 1. Attribution Models</button>
+        <button class="tab-btn" onclick="switchTab('tab-cpa')">💰 2. CPA & Acquisition Costs</button>
+        <button class="tab-btn" onclick="switchTab('tab-budget')">🎯 3. Shapley Budget Optimizer</button>
+        <button class="tab-btn" onclick="switchTab('tab-whatif')">⚡ 4. Interactive What-If Simulator</button>
+    </div>
+
+    <!-- TAB 1: ATTRIBUTION MODELS -->
+    <div id="tab-models" class="tab-content active">
+        <div class="grid-2col">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Attribution Model Credit Comparison</div>
+                        <div class="card-desc">Comparing Last-Click vs. Markov Chain vs. Shapley Value</div>
+                    </div>
+                </div>
+                <canvas id="chart-models"></canvas>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Shapley vs. Last-Click Delta Analysis</div>
+                        <div class="card-desc">How algorithmic attribution re-assigns credit across channels</div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="table-models">
+                        <thead>
+                            <tr>
+                                <th>Channel</th>
+                                <th>Last-Click</th>
+                                <th>Shapley</th>
+                                <th>Delta (Conv)</th>
+                                <th>Shift (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: CPA & ACQUISITION COSTS -->
+    <div id="tab-cpa" class="tab-content">
+        <div class="grid-2col">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Paid Channel True Acquisition Cost (CPA)</div>
+                        <div class="card-desc">Last-Click CPA vs. Shapley Algorithmic CPA ($ USD)</div>
+                    </div>
+                </div>
+                <canvas id="chart-cpa"></canvas>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Financial Reconciliation Grid</div>
+                        <div class="card-desc">Complete breakdown of touchpoints, spend, and CPA</div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="table-cpa">
+                        <thead>
+                            <tr>
+                                <th>Channel</th>
+                                <th>Touchpoints</th>
+                                <th>Illust. Spend</th>
+                                <th>Last-Click CPA</th>
+                                <th>Shapley CPA</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: SHAPLEY BUDGET OPTIMIZER -->
+    <div id="tab-budget" class="tab-content">
+        <div class="grid-2col">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Recommended Budget Reallocation</div>
+                        <div class="card-desc">Diverging spend shifts ($ USD) to align with Shapley contribution weights</div>
+                    </div>
+                </div>
+                <canvas id="chart-budget"></canvas>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Optimization Strategy & Constraints</div>
+                        <div class="card-desc">Mathematical allocation under fixed total budget</div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="table-budget">
+                        <thead>
+                            <tr>
+                                <th>Channel</th>
+                                <th>Current Spend</th>
+                                <th>Optimal Spend</th>
+                                <th>Spend Delta</th>
+                                <th>Shapley Weight</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(99, 102, 241, 0.1); border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                    <h4 style="color:#818cf8; font-size: 0.95rem; margin-bottom: 0.5rem;">💡 Executive Takeaway</h4>
+                    <p style="font-size: 0.85rem; color: #cbd5e1; line-height: 1.6;">
+                        Last-Click attribution severely misallocates capital by starving top-of-funnel discovery channels like <strong>Paid Search</strong> (+65.7% Shapley weight). Reallocating capital away from saturated closing channels (such as Social and Affiliates) toward Paid Search and Display balances the acquisition funnel and maximizes portfolio ROI.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: INTERACTIVE WHAT-IF SIMULATOR -->
+    <div id="tab-whatif" class="tab-content">
+        <div class="card" style="max-width: 900px; margin: 0 auto;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Interactive What-If Scenario Simulator</div>
+                    <div class="card-desc">Adjust channel budget multipliers to simulate projected conversion and revenue impacts in real-time (Using Real AOV: ${real_aov:.2f})</div>
+                </div>
+            </div>
+
+            <div id="sliders-container"></div>
+
+            <div class="sim-results">
+                <div class="sim-card">
+                    <div class="kpi-label">New Total Paid Spend</div>
+                    <div id="res-spend" class="kpi-value" style="font-size: 1.5rem; color: #38bdf8;">$0.00</div>
+                    <div id="res-spend-delta" class="kpi-sub">$0.00</div>
+                </div>
+                <div class="sim-card">
+                    <div class="kpi-label">Projected Conversions</div>
+                    <div id="res-conv" class="kpi-value" style="font-size: 1.5rem; color: #818cf8;">0</div>
+                    <div id="res-conv-delta" class="kpi-sub">+0.0</div>
+                </div>
+                <div class="sim-card">
+                    <div class="kpi-label">Projected Revenue Impact</div>
+                    <div id="res-rev" class="kpi-value" style="font-size: 1.5rem; color: #10b981;">$0.00</div>
+                    <div id="res-rev-sub" class="kpi-sub">Based on AOV ${real_aov:.2f}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- EMBEDDED DATA & LOGIC -->
+<script>
+    // Embedded JSON data from Python pipeline
+    const modelsData = {json.dumps(models_data)};
+    const finData = {json.dumps(fin_data)};
+    const optData = {json.dumps(opt_data)};
+    const realAov = {real_aov};
+
+    // Tab Switching Logic
+    function switchTab(tabId) {{
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }}
+
+    // 1. Build Models Table & Chart
+    function initModelsTab() {{
+        const tbody = document.querySelector('#table-models tbody');
+        tbody.innerHTML = '';
+        
+        modelsData.forEach(row => {{
+            const delta = (row.Shapley - row.Last_Click).toFixed(2);
+            const pct = row.Last_Click > 0 ? ((delta / row.Last_Click) * 100).toFixed(1) : 0;
+            const badgeClass = delta >= 0 ? 'badge-up' : 'badge-down';
+            const sign = delta >= 0 ? '+' : '';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-weight:600;">${{row.Channel}}</td>
+                    <td class="mono">${{row.Last_Click.toLocaleString()}}</td>
+                    <td class="mono" style="color:#818cf8;">${{row.Shapley.toLocaleString()}}</td>
+                    <td class="mono">${{sign}}${{delta}}</td>
+                    <td><span class="badge ${{badgeClass}}">${{sign}}${{pct}}%</span></td>
+                </tr>
+            `;
+        }});
+
+        const ctx = document.getElementById('chart-models').getContext('2d');
+        new Chart(ctx, {{
+            type: 'bar',
+            data: {{
+                labels: modelsData.map(r => r.Channel),
+                datasets: [
+                    {{ label: 'Last-Click', data: modelsData.map(r => r.Last_Click), backgroundColor: '#475569', borderRadius: 6 }},
+                    {{ label: 'Markov Chain', data: modelsData.map(r => r.Markov), backgroundColor: '#38bdf8', borderRadius: 6 }},
+                    {{ label: 'Shapley Value', data: modelsData.map(r => r.Shapley), backgroundColor: '#6366f1', borderRadius: 6 }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{ legend: {{ labels: {{ color: '#f8fafc', font: {{ family: 'Outfit' }} }} }} }},
+                scales: {{
+                    x: {{ ticks: {{ color: '#94a3b8' }}, grid: {{ display: false }} }},
+                    y: {{ ticks: {{ color: '#94a3b8' }}, grid: {{ color: 'rgba(255,255,255,0.05)' }} }}
+                }}
+            }}
+        }});
+    }}
+
+    // 2. Build CPA Table & Chart
+    function initCpaTab() {{
+        const tbody = document.querySelector('#table-cpa tbody');
+        tbody.innerHTML = '';
+        
+        const paidChannels = finData.filter(r => r.Illustrative_Spend > 0);
+        
+        finData.forEach(row => {{
+            const spendStr = row.Illustrative_Spend > 0 ? `$${{row.Illustrative_Spend.toLocaleString()}}` : '<span style="color:#64748b;">Organic/Earned</span>';
+            const lcCpa = row.Last_Click_CPA > 0 ? `$${{row.Last_Click_CPA.toFixed(2)}}` : 'N/A';
+            const shCpa = row.Shapley_CPA > 0 ? `$${{row.Shapley_CPA.toFixed(2)}}` : 'N/A';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-weight:600;">${{row.Channel}}</td>
+                    <td class="mono">${{row.Session_Touchpoints.toLocaleString()}}</td>
+                    <td class="mono">${{spendStr}}</td>
+                    <td class="mono">${{lcCpa}}</td>
+                    <td class="mono" style="color:#34d399; font-weight:700;">${{shCpa}}</td>
+                </tr>
+            `;
+        }});
+
+        const ctx = document.getElementById('chart-cpa').getContext('2d');
+        new Chart(ctx, {{
+            type: 'bar',
+            data: {{
+                labels: paidChannels.map(r => r.Channel),
+                datasets: [
+                    {{ label: 'Last-Click CPA ($)', data: paidChannels.map(r => r.Last_Click_CPA), backgroundColor: '#ef4444', borderRadius: 6 }},
+                    {{ label: 'Shapley CPA ($)', data: paidChannels.map(r => r.Shapley_CPA), backgroundColor: '#10b981', borderRadius: 6 }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{ legend: {{ labels: {{ color: '#f8fafc', font: {{ family: 'Outfit' }} }} }} }},
+                scales: {{
+                    x: {{ ticks: {{ color: '#94a3b8' }}, grid: {{ display: false }} }},
+                    y: {{ ticks: {{ color: '#94a3b8' }}, grid: {{ color: 'rgba(255,255,255,0.05)' }} }}
+                }}
+            }}
+        }});
+    }}
+
+    // 3. Build Budget Table & Chart
+    function initBudgetTab() {{
+        const tbody = document.querySelector('#table-budget tbody');
+        tbody.innerHTML = '';
+        
+        optData.forEach(row => {{
+            const sign = row.Spend_Delta >= 0 ? '+' : '';
+            const badgeClass = row.Spend_Delta >= 0 ? 'badge-up' : 'badge-down';
+            
+            tbody.innerHTML += `
+                <tr>
+                    <td style="font-weight:600;">${{row.Channel}}</td>
+                    <td class="mono">$${{row.Current_Spend.toLocaleString()}}</td>
+                    <td class="mono" style="color:#38bdf8;">$${{row.Optimal_Spend.toLocaleString()}}</td>
+                    <td class="mono"><span class="badge ${{badgeClass}}">${{sign}}$${{row.Spend_Delta.toLocaleString()}}</span></td>
+                    <td class="mono">${{row.Shapley_Weight_Pct}}%</td>
+                </tr>
+            `;
+        }});
+
+        const ctx = document.getElementById('chart-budget').getContext('2d');
+        new Chart(ctx, {{
+            type: 'bar',
+            indexAxis: 'y',
+            data: {{
+                labels: optData.map(r => r.Channel),
+                datasets: [
+                    {{
+                        label: 'Spend Reallocation Delta ($)',
+                        data: optData.map(r => r.Spend_Delta),
+                        backgroundColor: optData.map(r => r.Spend_Delta >= 0 ? '#10b981' : '#ef4444'),
+                        borderRadius: 6
+                    }}
+                ]
+            }},
+            options: {{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {{ legend: {{ display: false }} }},
+                scales: {{
+                    x: {{ ticks: {{ color: '#94a3b8' }}, grid: {{ color: 'rgba(255,255,255,0.05)' }} }},
+                    y: {{ ticks: {{ color: '#f8fafc', font: {{ weight: '600' }} }}, grid: {{ display: false }} }}
+                }}
+            }}
+        }});
+    }}
+
+    // 4. Interactive What-If Simulator
+    const simChannels = finData.filter(r => r.Illustrative_Spend > 0).map(r => ({{
+        name: r.Channel,
+        baseSpend: r.Illustrative_Spend,
+        baseConv: r.Shapley_Conv,
+        mult: 1.0
+    }}));
+
+    function initWhatIfTab() {{
+        const container = document.getElementById('sliders-container');
+        container.innerHTML = '';
+
+        simChannels.forEach((ch, idx) => {{
+            container.innerHTML += `
+                <div class="slider-group">
+                    <div class="slider-header">
+                        <span class="slider-label">${{ch.name}} Spend Budget</span>
+                        <span id="label-mult-${{idx}}" class="slider-val">100% ($${{ch.baseSpend.toLocaleString()}})</span>
+                    </div>
+                    <input type="range" min="0.2" max="2.5" step="0.1" value="1.0" oninput="updateSim(${{idx}}, this.value)">
+                </div>
+            `;
+        }});
+        calculateSim();
+    }}
+
+    function updateSim(idx, val) {{
+        simChannels[idx].mult = parseFloat(val);
+        const newSpend = simChannels[idx].baseSpend * simChannels[idx].mult;
+        document.getElementById(`label-mult-${{idx}}`).innerText = `${{Math.round(simChannels[idx].mult * 100)}}% ($${{newSpend.toLocaleString(undefined, {{maximumFractionDigits:0}})}})`;
+        calculateSim();
+    }}
+
+    function calculateSim() {{
+        let baseTotalSpend = 0, newTotalSpend = 0;
+        let baseTotalConv = 0, newTotalConv = 0;
+
+        simChannels.forEach(ch => {{
+            baseTotalSpend += ch.baseSpend;
+            const newSpend = ch.baseSpend * ch.mult;
+            newTotalSpend += newSpend;
+
+            baseTotalConv += ch.baseConv;
+            const efficiency = ch.baseSpend > 0 ? ch.baseConv / ch.baseSpend : 0;
+            const projConv = efficiency * newSpend;
+            newTotalConv += projConv;
+        }});
+
+        const spendDelta = newTotalSpend - baseTotalSpend;
+        const convDelta = newTotalConv - baseTotalConv;
+        const revImpact = convDelta * realAov;
+
+        document.getElementById('res-spend').innerText = `$${{newTotalSpend.toLocaleString(undefined, {{maximumFractionDigits:2}})}}`;
+        const spendSign = spendDelta >= 0 ? '+' : '';
+        document.getElementById('res-spend-delta').innerText = `${{spendSign}}$${{spendDelta.toLocaleString(undefined, {{maximumFractionDigits:2}})}} vs. Current`;
+        document.getElementById('res-spend-delta').style.color = spendDelta >= 0 ? '#f59e0b' : '#34d399';
+
+        document.getElementById('res-conv').innerText = newTotalConv.toFixed(1);
+        const convSign = convDelta >= 0 ? '+' : '';
+        document.getElementById('res-conv-delta').innerText = `${{convSign}}${{convDelta.toFixed(1)}} Conversions`;
+        document.getElementById('res-conv-delta').style.color = convDelta >= 0 ? '#10b981' : '#ef4444';
+
+        const revSign = revImpact >= 0 ? '+' : '';
+        document.getElementById('res-rev').innerText = `${{revSign}}$${{revImpact.toLocaleString(undefined, {{maximumFractionDigits:2}})}}`;
+        document.getElementById('res-rev').style.color = revImpact >= 0 ? '#10b981' : '#ef4444';
+    }}
+
+    // Initialize Dashboard on Load
+    window.onload = () => {{
+        initModelsTab();
+        initCpaTab();
+        initBudgetTab();
+        initWhatIfTab();
+    }};
+</script>
+</body>
+</html>
+"""
+
+    output_path = 'dashboard.html'
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print(f"\n[SUCCESS] Standalone Interactive Dashboard created at: {os.path.abspath(output_path)}")
+    print("You can double-click 'dashboard.html' in Windows Explorer to open it in Chrome or Edge!")
+
+if __name__ == '__main__':
+    build_dashboard()

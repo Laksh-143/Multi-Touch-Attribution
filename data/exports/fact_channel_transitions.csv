@@ -1,0 +1,75 @@
+from_channel,to_channel,transition_count
+(Other),Null,3
+(Other),Affiliates,3
+(Other),Referral,1
+Affiliates,Null,3546
+Affiliates,Affiliates,881
+Affiliates,Referral,182
+Affiliates,Organic Search,82
+Affiliates,Social,6
+Affiliates,Paid Search,6
+Affiliates,Conversion,1
+Affiliates,(Other),1
+Direct,Null,35340
+Direct,Direct,10872
+Direct,Referral,853
+Direct,Organic Search,733
+Direct,Conversion,562
+Direct,Social,113
+Direct,Paid Search,112
+Direct,Display,88
+Direct,Affiliates,87
+Display,Null,1412
+Display,Display,846
+Display,Organic Search,161
+Display,Referral,75
+Display,Conversion,54
+Display,Paid Search,49
+Display,Social,3
+Display,Affiliates,2
+Organic Search,Null,98323
+Organic Search,Organic Search,20186
+Organic Search,Referral,1099
+Organic Search,Conversion,1022
+Organic Search,Paid Search,733
+Organic Search,Display,452
+Organic Search,Social,210
+Organic Search,Affiliates,109
+Organic Search,Direct,8
+Organic Search,(Other),1
+Paid Search,Null,6929
+Paid Search,Paid Search,2393
+Paid Search,Organic Search,796
+Paid Search,Conversion,162
+Paid Search,Display,109
+Paid Search,Referral,61
+Paid Search,Social,9
+Paid Search,Direct,3
+Paid Search,Affiliates,2
+Referral,Null,19890
+Referral,Referral,10187
+Referral,Conversion,1509
+Referral,Organic Search,624
+Referral,Display,143
+Referral,Social,106
+Referral,Paid Search,67
+Referral,Affiliates,49
+Referral,Direct,18
+Referral,(Other),2
+Social,Null,89866
+Social,Social,4622
+Social,Organic Search,198
+Social,Referral,107
+Social,Paid Search,71
+Social,Conversion,31
+Social,Display,28
+Social,Affiliates,6
+Social,Direct,1
+Start,Organic Search,99363
+Start,Social,89861
+Start,Direct,37858
+Start,Referral,20030
+Start,Paid Search,7033
+Start,Affiliates,3566
+Start,Display,936
+Start,(Other),3
